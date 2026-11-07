@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>血壓日記</title>
+  <meta name="description" content="每天記錄早晚血壓的行事曆，快速查看血壓趨勢。">
+  <meta name="theme-color" content="#f3f4f6">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="血壓日記">
+  <script>
+    // 盡早套用主題，避免畫面閃爍
+    try {
+      var t = localStorage.getItem('bp-theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {}
+  </script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.5-9.6C1.1 7.8 3.4 4 7.1 4c2 0 3.6 1.1 4.9 2.8C13.3 5.1 14.9 4 16.9 4c3.7 0 6 3.8 4.6 7.4C19.5 16.4 12 21 12 21z"/></svg>
+      </span>
+      <h1 id="pageTitle">血壓日記</h1>
+    </div>
+    <div class="topbar-actions">
+      <button class="icon-btn" id="themeBtn" type="button" aria-label="切換深淺色">
+        <svg class="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
+        <svg class="i-moon" viewBox="0 0 24 24"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/></svg>
+      </button>
+      <button class="icon-btn" id="settingsBtn" type="button" aria-label="設定">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- ============ 日曆 ============ -->
+    <section class="view active" id="view-calendar" aria-label="日曆">
+      <div class="reminder" id="reminder"></div>
+
+      <div class="card cal-card">
+        <div class="cal-head">
+          <button class="icon-btn sm" id="calPrev" type="button" aria-label="上個月">
+            <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+          </button>
+          <h2 id="calTitle"></h2>
+          <button class="icon-btn sm" id="calNext" type="button" aria-label="下個月">
+            <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+          </button>
+          <button class="pill-btn" id="calToday" type="button">今天</button>
+        </div>
+        <div class="cal-week" aria-hidden="true">
+          <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+        </div>
+        <div class="cal-grid" id="calGrid" role="grid"></div>
+        <div class="cal-legend" aria-label="圖例">
+          <span><i class="sw lv0"></i>正常</span>
+          <span><i class="sw lv1"></i>偏高</span>
+          <span><i class="sw lv2"></i>第一期</span>
+          <span><i class="sw lv3"></i>第二期</span>
+          <span class="legend-dots"><i class="dot on"></i><i class="dot"></i>早 / 晚</span>
+        </div>
+      </div>
+
+      <div class="day-panel">
+        <div class="day-head">
+          <div>
+            <h3 id="dayTitle"></h3>
+            <p class="muted" id="daySummary"></p>
+          </div>
+          <button class="pill-btn accent" id="dayAdd" type="button">＋ 新增</button>
+        </div>
+        <ul class="record-list" id="dayList"></ul>
+      </div>
+    </section>
+
+    <!-- ============ 趨勢 ============ -->
+    <section class="view" id="view-trend" aria-label="趨勢圖">
+      <div class="filters">
+        <div class="filter-row">
+          <span class="filter-label">期間</span>
+          <div class="segmented" id="rangeSeg" role="radiogroup" aria-label="期間">
+            <button type="button" data-v="7">7 天</button>
+            <button type="button" data-v="30">30 天</button>
+            <button type="button" data-v="90">90 天</button>
+            <button type="button" data-v="all">全部</button>
+          </div>
+        </div>
+        <div class="filter-row">
+          <span class="filter-label">Y 軸</span>
+          <div class="chips" id="metricChips" role="radiogroup" aria-label="Y 軸數值"></div>
+        </div>
+        <div class="filter-row">
+          <span class="filter-label">每日取值</span>
+          <div class="chips" id="aggChips" role="radiogroup" aria-label="每日取值方式"></div>
+        </div>
+      </div>
+
+      <div class="stats" id="stats"></div>
+
+      <div class="card chart-card">
+        <div class="chart-title">
+          <div>
+            <h2 id="chartTitle"></h2>
+            <p class="muted" id="chartSub"></p>
+          </div>
+          <div class="legend" id="chartLegend"></div>
+        </div>
+        <div class="chart" id="chart"></div>
+        <p class="chart-note muted" id="chartNote"></p>
+      </div>
+
+      <details class="card table-card">
+        <summary>查看數據表</summary>
+        <div class="table-wrap" id="tableWrap"></div>
+      </details>
+    </section>
+
+    <!-- ============ 設定 ============ -->
+    <section class="view" id="view-settings" aria-label="設定">
+      <div class="card settings-card">
+        <h2>外觀</h2>
+        <div class="segmented wide" id="themeSeg" role="radiogroup" aria-label="主題">
+          <button type="button" data-v="light">淺色</button>
+          <button type="button" data-v="dark">深色</button>
+          <button type="button" data-v="system">跟隨系統</button>
+        </div>
+      </div>
+
+      <div class="card settings-card">
+        <h2>資料</h2>
+        <p class="muted">所有記錄只儲存在這台裝置的瀏覽器中，不會上傳。建議定期匯出備份。</p>
+        <div class="btn-list">
+          <button class="list-btn" id="exportCsv" type="button">匯出 CSV（可用 Excel 開啟）</button>
+          <button class="list-btn" id="exportJson" type="button">匯出備份檔（JSON）</button>
+          <label class="list-btn" for="importFile">匯入備份檔
+            <input type="file" id="importFile" accept="application/json,.json" hidden>
+          </label>
+          <button class="list-btn" id="loadDemo" type="button">載入示範資料</button>
+          <button class="list-btn danger" id="clearAll" type="button">清除所有記錄</button>
+        </div>
+        <p class="muted small" id="dataCount"></p>
+      </div>
+
+      <div class="card settings-card">
+        <h2>量血壓小提醒</h2>
+        <ul class="tips">
+          <li><b>722 原則：</b>連續 <b>7</b> 天、每天早晚 <b>2</b> 次、每次量 <b>2</b> 遍。</li>
+          <li><b>早上：</b>起床後 1 小時內、上完廁所、吃早餐與服藥前。</li>
+          <li><b>晚上：</b>睡前 1 小時內。</li>
+          <li>量之前先坐著休息 5 分鐘，手臂與心臟同高，量測時不說話。</li>
+        </ul>
+      </div>
+
+      <div class="card settings-card">
+        <h2>血壓分級參考（居家血壓，mmHg）</h2>
+        <table class="grade-table">
+          <thead><tr><th>分級</th><th>收縮壓</th><th></th><th>舒張壓</th></tr></thead>
+          <tbody>
+            <tr><td><span class="tag lv0">正常</span></td><td>&lt; 120</td><td>且</td><td>&lt; 80</td></tr>
+            <tr><td><span class="tag lv1">偏高</span></td><td>120–129</td><td>且</td><td>&lt; 80</td></tr>
+            <tr><td><span class="tag lv2">高血壓第一期</span></td><td>130–139</td><td>或</td><td>80–89</td></tr>
+            <tr><td><span class="tag lv3">高血壓第二期</span></td><td>≥ 140</td><td>或</td><td>≥ 90</td></tr>
+          </tbody>
+        </table>
+        <p class="muted small">分級參考 2022 台灣高血壓治療指引，居家血壓控制目標為 &lt; 130/80 mmHg。本 App 僅供記錄參考，不能取代醫師診斷，如有疑慮請諮詢醫師。</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ 底部導覽 ============ -->
+  <nav class="tabbar" aria-label="主要導覽">
+    <button class="tab active" type="button" data-view="calendar">
+      <svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+      <span>日曆</span>
+    </button>
+    <button class="tab-add" type="button" id="addBtn" aria-label="新增血壓記錄">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <button class="tab" type="button" data-view="trend">
+      <svg viewBox="0 0 24 24"><path d="M3.5 19.5h17"/><path d="M4.5 15l4.5-5 4 3.5 6.5-7.5"/></svg>
+      <span>趨勢</span>
+    </button>
+  </nav>
+
+  <!-- ============ 新增 / 編輯 ============ -->
+  <div class="backdrop" id="backdrop" hidden></div>
+  <section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <button class="text-btn" id="sheetCancel" type="button">取消</button>
+      <h2 id="sheetTitle">新增記錄</h2>
+      <button class="text-btn strong" id="sheetSave" type="button">儲存</button>
+    </div>
+    <div class="sheet-body">
+      <p class="slogan" id="slogan"></p>
+
+      <div class="field-row">
+        <label for="fDate">日期</label>
+        <input type="date" id="fDate" class="date-input">
+      </div>
+
+      <div class="wheel-picker" id="wheelPicker">
+        <div class="wheel-band" aria-hidden="true"></div>
+        <div class="wheel period" id="wPeriod" tabindex="0" role="spinbutton" aria-label="上午或下午"></div>
+        <div class="wheel" id="wHour" tabindex="0" role="spinbutton" aria-label="時"></div>
+        <div class="wheel-colon" aria-hidden="true">:</div>
+        <div class="wheel" id="wMinute" tabindex="0" role="spinbutton" aria-label="分"></div>
+      </div>
+      <div class="quick-times">
+        <button type="button" class="chip" data-quick="now">現在</button>
+        <button type="button" class="chip" data-quick="07:00">早上 7:00</button>
+        <button type="button" class="chip" data-quick="21:00">晚上 9:00</button>
+      </div>
+
+      <div class="num-grid">
+        <label class="num-block sys">
+          <span class="num-name">收縮壓<small>（高壓）</small></span>
+          <input id="fSys" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="120" enterkeyhint="next" autocomplete="off">
+          <span class="num-unit">SYS · mmHg</span>
+        </label>
+        <label class="num-block dia">
+          <span class="num-name">舒張壓<small>（低壓）</small></span>
+          <input id="fDia" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="80" enterkeyhint="next" autocomplete="off">
+          <span class="num-unit">DIA · mmHg</span>
+        </label>
+        <label class="num-block pulse">
+          <span class="num-name">脈搏</span>
+          <input id="fPulse" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="72" enterkeyhint="done" autocomplete="off">
+          <span class="num-unit">PULSE · bpm</span>
+        </label>
+      </div>
+      <p class="form-hint" id="formHint" aria-live="polite"></p>
+
+      <div class="field-row">
+        <label for="fNote">備註</label>
+        <input type="text" id="fNote" class="text-input" placeholder="選填，例如：服藥後、運動後" maxlength="60">
+      </div>
+
+      <button class="primary-btn" id="sheetSave2" type="button">儲存記錄</button>
+      <button class="danger-btn" id="sheetDelete" type="button" hidden>刪除這筆記錄</button>
+    </div>
+  </section>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
