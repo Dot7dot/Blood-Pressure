@@ -359,8 +359,10 @@ export function makeBatch(seed, scenes) {
   const canvas = document.createElement('canvas');
   const work = document.createElement('canvas');
   for (let s = 0; s < scenes; s++) {
-    const { gt } = renderScene(rng, canvas);
-    const { g, w, h, scale } = toWorkGray(canvas, null, work);
+    const scene = renderScene(rng, canvas);
+    const { gt } = scene;
+    // 「整台機器」模式會回傳另一張比較大的畫布
+    const { g, w, h, scale } = toWorkGray(scene.canvas, null, work);
     const gtW = gt.map((b) => ({ x0: b.x0 * scale, y0: b.y0 * scale, x1: b.x1 * scale, y1: b.y1 * scale, label: b.label }));
     const { cands } = allCandidates(g, w, h);
     for (const c of cands) {

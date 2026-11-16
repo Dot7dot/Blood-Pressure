@@ -449,19 +449,39 @@ export function toWorkGray(src, rect, work = document.createElement('canvas')) {
  */
 export function findDigits(g, w, h) {
   let best = null;
+  const readings = [];
+  outer:
   for (const bin of binaryVariants(g, w, h)) {
     for (const [rx, ry] of CONFIGS) {
       const cands = findCandidates(bin, w, h, rx, ry);
       for (const c of cands) classifyBox(bin, w, c);
       const rows = recoverLeadingOnes(bin, w, h, groupRows(cands));
       const reading = pickReading(rows);
+      if (reading) readings.push(reading);
       const score = reading ? reading.score : -1;
       if (!best || score > best.score) best = { score, cands, rows, reading, bin };
       // 已經很確定就提早結束（收縮壓低於 100 很少見，繼續找找看有沒有漏掉的「1」）
-      if (reading && reading.pulse !== null && reading.conf > 0.9 && reading.sys >= 100) return { w, h, ...best };
+      if (reading && reading.pulse !== null && reading.conf > 0.9 && reading.sys >= 100) break outer;
     }
   }
+  if (best.reading) best.reading = consensus(best.reading, readings);
   return { w, h, ...best };
+}
+
+/** 綜合不同設定的結果：補回漏掉的百位數「1」與脈搏 */
+function consensus(r, all) {
+  const out = { ...r };
+  for (const o of all) {
+    if (o === r) continue;
+    // 同一組數字，只是另一種設定多抓到了百位數的「1」
+    if (o.dia === out.dia && o.sys === out.sys + 100 && out.sys < 100) out.sys = o.sys;
+    if (o.sys % 100 === out.sys % 100 && o.dia === out.dia + 100 && out.dia < 100 && o.dia < o.sys) out.dia = o.dia;
+  }
+  for (const o of all) {
+    if (o === r || o.sys !== out.sys || o.dia !== out.dia || o.pulse === null) continue;
+    if (out.pulse === null || (out.pulse < 100 && o.pulse === out.pulse + 100)) out.pulse = o.pulse;
+  }
+  return out;
 }
 
 const inRange = (v, lo, hi) => v >= lo && v <= hi;

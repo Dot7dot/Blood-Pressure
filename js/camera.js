@@ -100,16 +100,16 @@ function tick() {
   const res = recognize(video, k ? expand(rect, k, W, H) : rect, work);
   const reading = res.reading && res.reading.pulse !== null ? res.reading : null;
   history.push(reading ? key(reading) : null);
-  if (history.length > 4) history.shift();
+  if (history.length > 5) history.shift();
   showLive(reading);
   if (!reading) {
     setStatus('把三排數字放進框內，保持穩定');
     return;
   }
   setStatus('辨識中…請保持不動', 'ok');
-  // 連續兩次得到相同結果就自動完成
+  // 最近 5 次中有 3 次得到相同結果才自動完成（多數決，避免誤判）
   const n = history.filter((h) => h === key(reading)).length;
-  if (n >= 2) freeze(video, { ...res, rect: k ? expand(rect, k, W, H) : rect });
+  if (n >= 3) freeze(video, { ...res, rect: k ? expand(rect, k, W, H) : rect });
 }
 
 /** 定格畫面並顯示辨識結果 */
