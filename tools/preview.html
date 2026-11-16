@@ -1,0 +1,14 @@
+<!doctype html><meta charset=utf-8><body style="margin:0;background:#fff;display:flex;flex-wrap:wrap;gap:6px;width:1400px">
+<script type=module>
+import { renderScene, makeRng } from './synth.js';
+const rng = makeRng(Number(location.hash.slice(1)) || 7);
+for (let i = 0; i < 8; i++) {
+  const { canvas, gt, reading } = renderScene(rng);
+  const ctx = canvas.getContext('2d');
+  ctx.strokeStyle = 'red'; ctx.lineWidth = 2;
+  for (const b of gt) ctx.strokeRect(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0);
+  canvas.style.width = '330px';
+  document.body.appendChild(canvas);
+}
+window.ready = true;
+</script>

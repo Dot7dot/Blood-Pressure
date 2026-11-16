@@ -561,3 +561,177 @@ td.r, th.r { text-align: right; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ==========================================================
+   輸入方式：拍照辨識 / 手動輸入
+   ========================================================== */
+.input-mode button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.input-mode svg {
+  width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.sheet.mode-manual .cam-card { display: none; }
+
+.cam-card {
+  display: grid; grid-template-columns: 48px 1fr auto; align-items: center; gap: 12px;
+  width: 100%; text-align: left;
+  background: var(--accent); color: var(--on-accent);
+  border-radius: var(--radius); padding: 14px 16px;
+}
+.cam-card:active { filter: brightness(.94); }
+.cam-card-icon {
+  width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center;
+  background: rgba(255,255,255,.18);
+}
+.cam-card-icon svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.cam-card-text b { display: block; font-size: 17px; }
+.cam-card-text small { display: block; font-size: 13px; opacity: .88; }
+.cam-card-go { font-size: 30px; line-height: 1; opacity: .8; }
+.cam-card.done { background: var(--surface); color: var(--text); box-shadow: inset 4px 0 0 var(--lv0); }
+.cam-card.done .cam-card-icon { background: color-mix(in srgb, var(--lv0) 18%, var(--surface)); color: var(--lv0); }
+.cam-card.done .cam-card-text small { color: var(--text-2); opacity: 1; }
+.num-block.from-cam { background: color-mix(in srgb, var(--lv0) 9%, var(--surface)); }
+
+/* ==========================================================
+   相機畫面（全螢幕，固定深色）
+   ========================================================== */
+body.cam-open { overflow: hidden; }
+.cam {
+  position: fixed; inset: 0; z-index: 70;
+  background: #000; color: #fff;
+  opacity: 0; transition: opacity .2s;
+  touch-action: none;
+}
+.cam.show { opacity: 1; }
+.cam-stage { position: absolute; inset: 0; overflow: hidden; }
+.cam-stage video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cam-stage img {
+  position: absolute; left: 0; top: 0; transform-origin: 0 0; display: none;
+  max-width: none; user-select: none; -webkit-user-select: none; pointer-events: none;
+}
+.cam.photo-mode .cam-stage video { display: none; }
+.cam.photo-mode .cam-stage img { display: block; }
+.cam.photo-mode .cam-stage { cursor: grab; }
+
+/* 對準框：寬 74%（最多 380px），比例 3:4，位置偏上 */
+.cam-frame {
+  position: absolute; left: 50%; top: 44%;
+  width: min(74vw, 380px, 52vh); aspect-ratio: 3 / 4;
+  transform: translate(-50%, -50%);
+  border-radius: 18px;
+  box-shadow: 0 0 0 200vmax rgba(0,0,0,.5);
+  pointer-events: none;
+}
+.cam-frame .c { position: absolute; width: 34px; height: 34px; border: 4px solid #fff; }
+.cam-frame .tl { left: -2px; top: -2px; border-right: 0; border-bottom: 0; border-top-left-radius: 18px; }
+.cam-frame .tr { right: -2px; top: -2px; border-left: 0; border-bottom: 0; border-top-right-radius: 18px; }
+.cam-frame .bl { left: -2px; bottom: -2px; border-right: 0; border-top: 0; border-bottom-left-radius: 18px; }
+.cam-frame .br { right: -2px; bottom: -2px; border-left: 0; border-top: 0; border-bottom-right-radius: 18px; }
+
+.cam-top {
+  position: absolute; left: 0; right: 0; top: 0;
+  display: grid; grid-template-columns: 44px 1fr 44px; align-items: center;
+  padding: calc(env(safe-area-inset-top) + 10px) 14px 10px;
+}
+.cam-title { text-align: center; font-weight: 800; font-size: 17px; }
+.cam-icon {
+  width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(255,255,255,.16); color: #fff;
+}
+.cam-icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+
+.cam-bottom {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 0 16px calc(env(safe-area-inset-bottom) + 18px);
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.cam-status {
+  font-size: 14px; font-weight: 600; text-align: center;
+  background: rgba(0,0,0,.55); padding: 7px 14px; border-radius: 999px; max-width: 100%;
+}
+.cam-status.ok { background: rgba(31,157,107,.9); }
+.cam-status.err { background: rgba(224,69,63,.92); }
+.cam-live { display: flex; gap: 8px; min-height: 52px; }
+.cam-live span {
+  display: flex; flex-direction: column; align-items: center; min-width: 74px;
+  background: rgba(255,255,255,.14); border-radius: 12px; padding: 4px 10px;
+}
+.cam-live small { font-size: 11px; opacity: .8; }
+.cam-live b { font-size: 22px; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.cam-controls { display: grid; grid-template-columns: 1fr 84px 1fr; align-items: center; width: 100%; max-width: 420px; }
+.cam-side {
+  justify-self: center; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  color: #fff; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.cam-side svg {
+  width: 46px; height: 46px; padding: 11px; border-radius: 50%; background: rgba(255,255,255,.16);
+  fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+.cam-shutter {
+  width: 76px; height: 76px; border-radius: 50%; border: 4px solid #fff;
+  display: grid; place-items: center; justify-self: center;
+}
+.cam-shutter span { width: 60px; height: 60px; border-radius: 50%; background: #fff; transition: transform .1s; }
+.cam-shutter:active span { transform: scale(.88); }
+.cam-back {
+  display: none; color: #fff; font-size: 14px; font-weight: 600;
+  background: rgba(255,255,255,.16); border-radius: 999px; padding: 8px 16px;
+}
+.cam.photo-mode .cam-back { display: block; }
+.cam.no-camera .cam-shutter { opacity: .35; pointer-events: none; }
+.cam.photo-mode .cam-shutter { opacity: 1; pointer-events: auto; }
+
+.cam-result {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+  background: var(--bg); color: var(--text);
+  border-radius: 24px 24px 0 0;
+  padding: 16px 16px calc(env(safe-area-inset-bottom) + 18px);
+  display: flex; flex-direction: column; gap: 12px;
+  max-width: 560px; margin: 0 auto;
+  animation: up .25s cubic-bezier(.2,.8,.2,1);
+}
+@keyframes up { from { transform: translateY(100%); } to { transform: none; } }
+.cam-result img {
+  width: 100%; max-height: 32vh; object-fit: contain; border-radius: 14px; background: #000;
+}
+.cam-values { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cam-values .v {
+  display: flex; flex-direction: column; background: var(--surface); border-radius: 14px; padding: 8px 12px;
+  box-shadow: inset 0 4px 0 var(--bar);
+}
+.cam-values .sys { --bar: var(--series-1); }
+.cam-values .dia { --bar: var(--series-2); }
+.cam-values .pulse { --bar: var(--lv3); }
+.cam-values small { font-size: 12px; color: var(--text-2); font-weight: 700; }
+.cam-values b { font-size: 32px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.cam-check { font-size: 13px; color: var(--text-2); text-align: center; }
+.cam-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; }
+.cam-btn { height: 52px; border-radius: 16px; font-size: 16px; font-weight: 800; }
+.cam-btn.primary { background: var(--accent); color: var(--on-accent); }
+.cam-btn.ghost { background: var(--surface); color: var(--text); }
+.shake { animation: shake .35s; }
+@keyframes shake { 25% { translate: -6px 0; } 75% { translate: 6px 0; } }
+
+/* ==========================================================
+   備份與換手機
+   ========================================================== */
+.backup-status {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface-2); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 14px;
+}
+.backup-status b { font-variant-numeric: tabular-nums; }
+.backup-status.warn { background: color-mix(in srgb, var(--lv1) 18%, var(--surface)); }
+.list-btn.center { text-align: center; color: var(--accent); }
+.steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: var(--text-2); }
+
+/* 匯入確認 */
+.dialog-card {
+  position: fixed; left: 50%; top: 50%; z-index: 80; transform: translate(-50%, -50%);
+  width: min(360px, calc(100% - 32px));
+  background: var(--surface); color: var(--text); border-radius: 22px; padding: 20px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.dialog-card h3 { font-size: 18px; font-weight: 800; }
+.dialog-card p { font-size: 14px; color: var(--text-2); }
+.dialog-card .cam-actions .cam-btn.ghost { background: var(--surface-2); }
+.dialog-backdrop { position: fixed; inset: 0; z-index: 79; background: rgba(10,12,16,.5); }

@@ -1,10 +1,11 @@
 import {
-  loadRecords, saveRecords, parseImport, uid, LIMITS,
+  loadRecords, saveRecords, parseImport, parseCsv, uid, LIMITS,
   dayKey, keyToDate, addDays, startOfDay, fmtTime, fmtDayTitle, fmtMD, WEEK,
   isMorning, periodLabel, classify, groupByDay, round, mean,
 } from './store.js';
 import { Wheel } from './wheel.js';
 import { renderChart } from './chart.js';
+import { openCamera } from './camera.js';
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
@@ -27,11 +28,12 @@ const state = {
   range: ['7', '30', '90', 'all'].includes(prefs.range) ? prefs.range : '30',
   metric: prefs.metric || 'sys',
   agg: prefs.agg || 'max',
+  inputMode: prefs.inputMode === 'manual' ? 'manual' : 'camera',
   editingId: null,
 };
 
 function savePrefs() {
-  try { localStorage.setItem(PREF_KEY, JSON.stringify({ range: state.range, metric: state.metric, agg: state.agg })); } catch { /* 忽略 */ }
+  try { localStorage.setItem(PREF_KEY, JSON.stringify({ range: state.range, metric: state.metric, agg: state.agg, inputMode: state.inputMode })); } catch { /* 忽略 */ }
 }
 
 function commit() {
@@ -287,6 +289,28 @@ function renderSettings() {
   $$('#themeSeg button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.v === mode)));
   const days = byDay.size;
   $('#dataCount').textContent = records.length ? `目前共有 ${records.length} 筆記錄，分布在 ${days} 天。` : '目前還沒有記錄。';
+  renderBackupStatus();
+}
+
+const fmtYMD = (t) => { const d = new Date(t); return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`; };
+
+function lastBackup() {
+  try { return Number(localStorage.getItem('bp-last-backup')) || 0; } catch { return 0; }
+}
+
+function renderBackupStatus() {
+  const el = $('#backupStatus');
+  if (!records.length) {
+    el.className = 'backup-status';
+    el.textContent = '目前還沒有記錄。換到新手機時，按下方「匯入備份檔」即可還原。';
+    return;
+  }
+  const last = lastBackup();
+  const range = `${fmtYMD(records[0].t)} – ${fmtYMD(records[records.length - 1].t)}`;
+  const stale = !last || Date.now() - last > 30 * 86400000;
+  el.className = `backup-status${stale ? ' warn' : ''}`;
+  const lastText = last ? `上次備份：${fmtYMD(last)}` : '還沒有備份過';
+  el.innerHTML = `<div>共 <b>${records.length}</b> 筆記錄（${range}）<br><span class="muted small">${lastText}${stale ? ' · 建議現在備份一次' : ''}</span></div>`;
 }
 
 /* ================= 畫面切換 ================= */
@@ -393,7 +417,9 @@ function openSheet(id) {
   }
   fDate.value = key;
   $('#slogan').textContent = sloganFor(key);
-  [fSys, fDia, fPulse].forEach((el) => el.closest('.num-block').classList.remove('invalid'));
+  [fSys, fDia, fPulse].forEach((el) => el.closest('.num-block').classList.remove('invalid', 'from-cam'));
+  resetCamCard();
+  setInputMode(rec ? 'manual' : state.inputMode, false);
   updateSheetHint();
 
   const sheet = $('#sheet');
@@ -508,7 +534,7 @@ function deleteRecord() {
 function bindNum(el, next) {
   el.addEventListener('input', () => {
     el.value = el.value.replace(/\D/g, '').slice(0, 3);
-    el.closest('.num-block').classList.remove('invalid');
+    el.closest('.num-block').classList.remove('invalid', 'from-cam');
     updateSheetHint();
     const v = el.value;
     const done = v.length === 3 || (v.length === 2 && v[0] !== '1' && v[0] !== '2');
@@ -525,6 +551,52 @@ bindNum(fSys, fDia);
 bindNum(fDia, fPulse);
 bindNum(fPulse, null);
 fDate.addEventListener('change', () => { $('#slogan').textContent = sloganFor(fDate.value || dayKey(new Date())); });
+
+/* ================= 輸入方式：拍照辨識 / 手動輸入 ================= */
+function setInputMode(mode, remember = true) {
+  $('#sheet').classList.toggle('mode-manual', mode === 'manual');
+  $$('#inputMode button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.v === mode)));
+  if (remember) { state.inputMode = mode; savePrefs(); }
+}
+
+function resetCamCard() {
+  $('#camCard').classList.remove('done');
+  $('#camCardTitle').textContent = '拍攝血壓計螢幕';
+  $('#camCardSub').textContent = '自動辨識收縮壓、舒張壓與脈搏';
+}
+
+function startCamera() {
+  openCamera((out) => {
+    if (!out) return;
+    if (out.manual) {
+      setInputMode('manual');
+      setTimeout(() => fSys.focus(), 250);
+      return;
+    }
+    const r = out.reading;
+    if (!r) return;
+    const pairs = [[fSys, r.sys], [fDia, r.dia], [fPulse, r.pulse]];
+    for (const [el, v] of pairs) {
+      const block = el.closest('.num-block');
+      block.classList.remove('invalid', 'from-cam');
+      if (v !== null && v !== undefined) { el.value = String(v); block.classList.add('from-cam'); }
+    }
+    $('#camCard').classList.add('done');
+    $('#camCardTitle').textContent = `已辨識 ${r.sys}/${r.dia}${r.pulse ? `，脈搏 ${r.pulse}` : ''}`;
+    $('#camCardSub').textContent = r.pulse ? '數字有誤可直接修改，或點這裡重拍' : '沒有辨識到脈搏，請手動輸入';
+    updateSheetHint();
+    if (!r.pulse) setTimeout(() => fPulse.focus(), 250);
+  });
+}
+
+$('#inputMode').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  setInputMode(b.dataset.v);
+  if (b.dataset.v === 'camera') startCamera();
+  else fSys.focus();
+});
+$('#camCard').addEventListener('click', startCamera);
 
 /* ================= 匯出 / 匯入 ================= */
 function download(name, content, type) {
@@ -544,23 +616,84 @@ function exportCsv() {
   for (const r of records) {
     lines.push([dayKey(r.t), fmtTime(r.t), periodLabel(r.t), r.sys, r.dia, r.pulse, classify(r.sys, r.dia).label, q(r.note || '')].join(','));
   }
-  download(`血壓記錄-${stamp()}.csv`, '﻿' + lines.join('\r\n'), 'text/csv;charset=utf-8');
+  download(`blood-pressure-${stamp()}.csv`, '﻿' + lines.join('\r\n'), 'text/csv;charset=utf-8');
 }
-function exportJson() {
+async function exportJson() {
   if (!records.length) { toast('目前沒有記錄可以匯出'); return; }
-  download(`blood-pressure-backup-${stamp()}.json`, JSON.stringify({ app: 'bp-diary', version: 1, exported: new Date().toISOString(), records }, null, 2), 'application/json');
-}
-async function importJson(file) {
+  const content = JSON.stringify({ app: 'bp-diary', version: 1, exported: new Date().toISOString(), count: records.length, records }, null, 2);
+  const name = `blood-pressure-backup-${stamp()}.json`;
+  const markDone = () => {
+    try { localStorage.setItem('bp-last-backup', String(Date.now())); } catch { /* 忽略 */ }
+    renderBackupStatus();
+    toast(`已匯出 ${records.length} 筆記錄`);
+  };
+  // 手機上用系統分享面板（可存到「檔案」、雲端硬碟、LINE、AirDrop…）
   try {
-    const list = parseImport(await file.text());
-    const ids = new Set(records.map((r) => r.id));
-    let added = 0;
-    for (const r of list) if (!ids.has(r.id)) { records.push(r); added++; }
-    commit();
-    toast(`已匯入 ${added} 筆記錄`);
+    const file = new File([content], name, { type: 'application/json' });
+    const touch = matchMedia('(pointer: coarse)').matches;
+    if (touch && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: '血壓日記備份' });
+      markDone();
+      return;
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') return; // 使用者取消分享
+  }
+  download(name, content, 'application/json');
+  markDone();
+}
+
+const sig = (r) => `${r.t}|${r.sys}|${r.dia}|${r.pulse}`;
+
+function confirmDialog(title, body, okText) {
+  return new Promise((resolve) => {
+    const bd = document.createElement('div');
+    bd.className = 'dialog-backdrop';
+    const card = document.createElement('div');
+    card.className = 'dialog-card';
+    card.setAttribute('role', 'dialog');
+    card.innerHTML = `<h3>${title}</h3><p>${body}</p>
+      <div class="cam-actions"><button type="button" class="cam-btn ghost" data-v="0">取消</button>
+      <button type="button" class="cam-btn primary" data-v="1">${okText}</button></div>`;
+    const done = (v) => { bd.remove(); card.remove(); resolve(v); };
+    bd.addEventListener('click', () => done(false));
+    card.addEventListener('click', (e) => { const btn = e.target.closest('[data-v]'); if (btn) done(btn.dataset.v === '1'); });
+    document.body.append(bd, card);
+    card.querySelector('[data-v="1"]').focus();
+  });
+}
+
+async function importFile(file) {
+  let list;
+  try {
+    const text = await file.text();
+    list = /\.csv$/i.test(file.name) || /^\ufeff?日期,/.test(text) ? parseCsv(text) : parseImport(text);
   } catch {
     toast('匯入失敗：檔案格式不正確');
+    return;
   }
+  if (!list.length) { toast('檔案裡沒有可以匯入的記錄'); return; }
+  const ids = new Set(records.map((r) => r.id));
+  const sigs = new Set(records.map(sig));
+  const fresh = [];
+  for (const r of list) {
+    if (ids.has(r.id) || sigs.has(sig(r))) continue;
+    ids.add(r.id); sigs.add(sig(r));
+    fresh.push(r);
+  }
+  if (!fresh.length) {
+    toast(`檔案中的 ${list.length} 筆記錄都已經存在，不需要匯入`);
+    return;
+  }
+  const ts = list.map((r) => r.t);
+  const range = `${fmtYMD(Math.min(...ts))} – ${fmtYMD(Math.max(...ts))}`;
+  const ok = await confirmDialog('匯入備份檔',
+    `檔案內有 <b>${list.length}</b> 筆記錄（${range}），其中 <b>${fresh.length}</b> 筆是新的。<br>匯入後會與目前的記錄合併，不會刪除任何資料。`,
+    `匯入 ${fresh.length} 筆`);
+  if (!ok) return;
+  records.push(...fresh);
+  commit();
+  toast(`已匯入 ${fresh.length} 筆記錄`);
 }
 
 function loadDemo() {
@@ -670,11 +803,11 @@ $('.quick-times').addEventListener('click', (e) => {
     setWheelTime(h, m);
   }
 });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#sheet').hidden) closeSheet(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#sheet').hidden && $('#cam').hidden) closeSheet(); });
 
 $('#exportCsv').addEventListener('click', exportCsv);
 $('#exportJson').addEventListener('click', exportJson);
-$('#importFile').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) importJson(f); e.target.value = ''; });
+$('#importFile').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) importFile(f); e.target.value = ''; });
 $('#loadDemo').addEventListener('click', loadDemo);
 $('#clearAll').addEventListener('click', () => {
   if (!records.length) { toast('目前沒有記錄'); return; }

@@ -1,0 +1,50 @@
+<!doctype html><meta charset=utf-8>
+<script type=module>
+import { recognize } from '/js/ocr.js';
+import { makeRng } from './synth.js';
+// 用真實照片做隨機變化（裁切、旋轉、亮度、模糊、解析度），評估端到端辨識率
+window.evalReal = async (url, truth, lcd, n, seed) => {
+  const img = new Image(); img.src = url; await img.decode();
+  const rng = makeRng(seed);
+  const stats = { ok: 0, partial: 0, fail: 0, wrong: 0, wrongs: [] };
+  const c = document.createElement('canvas'); const ctx = c.getContext('2d');
+  for (let i = 0; i < n; i++) {
+    const m = rng(0.0, 0.45);
+    const cw = lcd.w * (1 + m * 2 * rng(0.6, 1)); const ch = lcd.h * (1 + m * 2 * rng(0.6, 1));
+    const cx = lcd.x + lcd.w / 2 + rng(-0.08, 0.08) * lcd.w; const cy = lcd.y + lcd.h / 2 + rng(-0.08, 0.08) * lcd.h;
+    const res = rng(0.25, 1);
+    c.width = Math.round(cw * res); c.height = Math.round(ch * res);
+    ctx.save();
+    ctx.filter = `blur(${rng.chance(0.5) ? rng(0, 2.5) : 0}px) brightness(${rng(0.6, 1.3)}) contrast(${rng(0.6, 1.3)})`;
+    ctx.translate(c.width / 2, c.height / 2);
+    ctx.rotate(rng(-0.12, 0.12));
+    ctx.scale(res, res);
+    ctx.drawImage(img, -cx, -cy);
+    ctx.restore();
+    const r = recognize(c).reading;
+    if (!r) { stats.fail++; continue; }
+    const sOk = r.sys === truth.sys && r.dia === truth.dia;
+    const anyWrong = r.sys !== truth.sys || r.dia !== truth.dia || (r.pulse !== null && r.pulse !== truth.pulse);
+    if (anyWrong) { stats.wrong++; if (stats.wrongs.length < 8) stats.wrongs.push(`${r.sys}/${r.dia}/${r.pulse}`); }
+    else if (sOk && r.pulse === truth.pulse) stats.ok++;
+    else stats.partial++;
+  }
+  return stats;
+};
+// 合成場景的端到端辨識率
+import { renderScene } from './synth.js';
+window.evalSynth = (n, seed) => {
+  const rng = makeRng(seed);
+  const stats = { ok: 0, partial: 0, fail: 0, wrong: 0, wrongs: [] };
+  for (let i = 0; i < n; i++) {
+    const { canvas, reading: t } = renderScene(rng);
+    const r = recognize(canvas).reading;
+    if (!r) { stats.fail++; continue; }
+    const anyWrong = r.sys !== t.sys || r.dia !== t.dia || (r.pulse !== null && r.pulse !== t.pulse);
+    if (anyWrong) { stats.wrong++; if (stats.wrongs.length < 8) stats.wrongs.push(`${r.sys}/${r.dia}/${r.pulse} vs ${t.sys}/${t.dia}/${t.pulse}`); }
+    else if (r.pulse === t.pulse) stats.ok++; else stats.partial++;
+  }
+  return stats;
+};
+window.ready = true;
+</script>

@@ -135,15 +135,26 @@
         </div>
       </div>
 
+      <div class="card settings-card" id="backupCard">
+        <h2>備份與換手機</h2>
+        <p class="muted">記錄只存在這支手機的瀏覽器裡。換手機或清除瀏覽器資料前，請先匯出備份檔。</p>
+        <div class="backup-status" id="backupStatus"></div>
+        <button class="primary-btn" id="exportJson" type="button">匯出所有記錄（備份檔）</button>
+        <label class="list-btn center" for="importFile">匯入備份檔
+          <input type="file" id="importFile" accept=".json,.csv,application/json,text/csv" hidden>
+        </label>
+        <ol class="steps">
+          <li>在舊手機按「匯出所有記錄」，把檔案存到雲端硬碟、或用 LINE / AirDrop / Email 傳給自己。</li>
+          <li>在新手機打開這個網站。</li>
+          <li>按「匯入備份檔」選擇那個檔案，過去的血壓記錄與趨勢就會出現。</li>
+        </ol>
+        <p class="muted small">匯入會「合併」到目前的記錄，不會刪除或覆蓋任何資料，重複的記錄會自動略過。</p>
+      </div>
+
       <div class="card settings-card">
-        <h2>資料</h2>
-        <p class="muted">所有記錄只儲存在這台裝置的瀏覽器中，不會上傳。建議定期匯出備份。</p>
+        <h2>其他資料功能</h2>
         <div class="btn-list">
           <button class="list-btn" id="exportCsv" type="button">匯出 CSV（可用 Excel 開啟）</button>
-          <button class="list-btn" id="exportJson" type="button">匯出備份檔（JSON）</button>
-          <label class="list-btn" for="importFile">匯入備份檔
-            <input type="file" id="importFile" accept="application/json,.json" hidden>
-          </label>
           <button class="list-btn" id="loadDemo" type="button">載入示範資料</button>
           <button class="list-btn danger" id="clearAll" type="button">清除所有記錄</button>
         </div>
@@ -203,23 +214,27 @@
     <div class="sheet-body">
       <p class="slogan" id="slogan"></p>
 
-      <div class="field-row">
-        <label for="fDate">日期</label>
-        <input type="date" id="fDate" class="date-input">
+      <div class="segmented wide input-mode" id="inputMode" role="radiogroup" aria-label="輸入方式">
+        <button type="button" data-v="camera" role="radio">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.6l1.4-2h5l1.4 2h1.6A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z"/><circle cx="12" cy="12.5" r="3.5"/></svg>
+          拍照辨識
+        </button>
+        <button type="button" data-v="manual" role="radio">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg>
+          手動輸入
+        </button>
       </div>
 
-      <div class="wheel-picker" id="wheelPicker">
-        <div class="wheel-band" aria-hidden="true"></div>
-        <div class="wheel period" id="wPeriod" tabindex="0" role="spinbutton" aria-label="上午或下午"></div>
-        <div class="wheel" id="wHour" tabindex="0" role="spinbutton" aria-label="時"></div>
-        <div class="wheel-colon" aria-hidden="true">:</div>
-        <div class="wheel" id="wMinute" tabindex="0" role="spinbutton" aria-label="分"></div>
-      </div>
-      <div class="quick-times">
-        <button type="button" class="chip" data-quick="now">現在</button>
-        <button type="button" class="chip" data-quick="07:00">早上 7:00</button>
-        <button type="button" class="chip" data-quick="21:00">晚上 9:00</button>
-      </div>
+      <button type="button" class="cam-card" id="camCard">
+        <span class="cam-card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.6l1.4-2h5l1.4 2h1.6A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z"/><circle cx="12" cy="12.5" r="3.5"/></svg>
+        </span>
+        <span class="cam-card-text">
+          <b id="camCardTitle">拍攝血壓計螢幕</b>
+          <small id="camCardSub">自動辨識收縮壓、舒張壓與脈搏</small>
+        </span>
+        <span class="cam-card-go" aria-hidden="true">›</span>
+      </button>
 
       <div class="num-grid">
         <label class="num-block sys">
@@ -241,6 +256,24 @@
       <p class="form-hint" id="formHint" aria-live="polite"></p>
 
       <div class="field-row">
+        <label for="fDate">日期</label>
+        <input type="date" id="fDate" class="date-input">
+      </div>
+
+      <div class="wheel-picker" id="wheelPicker">
+        <div class="wheel-band" aria-hidden="true"></div>
+        <div class="wheel period" id="wPeriod" tabindex="0" role="spinbutton" aria-label="上午或下午"></div>
+        <div class="wheel" id="wHour" tabindex="0" role="spinbutton" aria-label="時"></div>
+        <div class="wheel-colon" aria-hidden="true">:</div>
+        <div class="wheel" id="wMinute" tabindex="0" role="spinbutton" aria-label="分"></div>
+      </div>
+      <div class="quick-times">
+        <button type="button" class="chip" data-quick="now">現在</button>
+        <button type="button" class="chip" data-quick="07:00">早上 7:00</button>
+        <button type="button" class="chip" data-quick="21:00">晚上 9:00</button>
+      </div>
+
+      <div class="field-row">
         <label for="fNote">備註</label>
         <input type="text" id="fNote" class="text-input" placeholder="選填，例如：服藥後、運動後" maxlength="60">
       </div>
@@ -248,6 +281,43 @@
       <button class="primary-btn" id="sheetSave2" type="button">儲存記錄</button>
       <button class="danger-btn" id="sheetDelete" type="button" hidden>刪除這筆記錄</button>
     </div>
+  </section>
+
+  <!-- ============ 相機辨識 ============ -->
+  <section class="cam" id="cam" role="dialog" aria-modal="true" aria-label="拍照辨識血壓" hidden>
+    <div class="cam-stage" id="camStage">
+      <video id="camVideo" playsinline muted autoplay></video>
+      <img id="camPhoto" alt="" draggable="false">
+      <div class="cam-shade" aria-hidden="true"></div>
+      <div class="cam-frame" id="camFrame" aria-hidden="true">
+        <i class="c tl"></i><i class="c tr"></i><i class="c bl"></i><i class="c br"></i>
+      </div>
+    </div>
+    <div class="cam-top">
+      <button type="button" class="cam-icon" id="camClose" aria-label="關閉">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <p class="cam-title">對準血壓計螢幕</p>
+      <span class="cam-icon-spacer"></span>
+    </div>
+    <div class="cam-bottom">
+      <p class="cam-status" id="camStatus" aria-live="polite"></p>
+      <div class="cam-live" id="camLive" aria-live="polite"></div>
+      <div class="cam-controls">
+        <label class="cam-side" for="camFile">
+          <svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M20.5 16l-5-5-8.5 8.5"/></svg>
+          <span>相簿</span>
+          <input type="file" id="camFile" accept="image/*" hidden>
+        </label>
+        <button type="button" class="cam-shutter" id="camShutter" aria-label="拍照辨識"><span></span></button>
+        <button type="button" class="cam-side" id="camManual">
+          <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg>
+          <span>手動輸入</span>
+        </button>
+      </div>
+      <button type="button" class="cam-back" id="camBackToVideo">回到相機</button>
+    </div>
+    <div class="cam-result" id="camResult" hidden></div>
   </section>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>

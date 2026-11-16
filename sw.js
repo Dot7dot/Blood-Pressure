@@ -1,8 +1,9 @@
 // 離線快取：優先使用網路（確保拿到最新版本），斷線時改用快取
-const CACHE = 'bp-diary-v1';
+const CACHE = 'bp-diary-v2';
 const ASSETS = [
   './', 'index.html', 'css/style.css',
   'js/app.js', 'js/store.js', 'js/wheel.js', 'js/chart.js',
+  'js/camera.js', 'js/ocr.js', 'js/digit-model.js',
   'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/apple-touch-icon.png',
 ];
 

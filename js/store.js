@@ -46,6 +46,35 @@ export function parseImport(text) {
     .filter(isValid);
 }
 
+/** 匯入本 App 匯出的 CSV（日期,時間,時段,收縮壓,舒張壓,脈搏,分級,備註） */
+export function parseCsv(text) {
+  const rows = [];
+  const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter((l) => l.trim());
+  for (let i = 0; i < lines.length; i++) {
+    const cols = [];
+    let cur = ''; let q = false;
+    for (const ch of lines[i]) {
+      if (q) {
+        if (ch === '"') q = false; else cur += ch;
+      } else if (ch === '"') {
+        if (cur.endsWith('"')) cur += '"';
+        q = true;
+      } else if (ch === ',') { cols.push(cur); cur = ''; } else cur += ch;
+    }
+    cols.push(cur);
+    const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(cols[0] || '');
+    const tm = /^(\d{1,2}):(\d{2})$/.exec(cols[1] || '');
+    if (!m || !tm) continue; // 標題列或格式不符
+    const t = new Date(+m[1], +m[2] - 1, +m[3], +tm[1], +tm[2]).getTime();
+    rows.push({
+      id: uid(), t,
+      sys: Number(cols[3]), dia: Number(cols[4]), pulse: Number(cols[5]),
+      note: (cols[7] || '').slice(0, 60),
+    });
+  }
+  return rows.filter(isValid);
+}
+
 export function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
